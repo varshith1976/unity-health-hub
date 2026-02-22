@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import { FaLock, FaCheckCircle, FaQrcode, FaVideo, FaCheck } from 'react-icons/fa';
+import { FaLock, FaCheckCircle, FaQrcode, FaVideo } from 'react-icons/fa';
 import './PaymentGateway.css';
 
 const PaymentGateway = ({ appointment, onPaymentSuccess }) => {
   const [processing, setProcessing] = useState(false);
   const [paymentStep, setPaymentStep] = useState('scan'); // 'scan' | 'processing' | 'success'
-  const [showTelemedicine, setShowTelemedicine] = useState(false);
 
   const handleScanPayment = async () => {
     setProcessing(true);
@@ -27,7 +26,6 @@ const PaymentGateway = ({ appointment, onPaymentSuccess }) => {
   };
 
   const handleStartVideoCall = () => {
-    setShowTelemedicine(true);
     if (onPaymentSuccess) {
       onPaymentSuccess({
         ...appointment,

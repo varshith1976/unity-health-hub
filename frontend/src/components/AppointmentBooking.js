@@ -83,6 +83,7 @@ const AppointmentBooking = ({ doctor, onBack, onAppointmentCreated }) => {
     if (appointmentType === 'normal') {
       loadSlots();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [doctor.id, appointmentType]);
 
   const handleSlotSelection = (date, slot) => {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaPills, FaCalendarAlt, FaHistory, FaPlus, FaTimes, FaCheck, FaTablets } from 'react-icons/fa';
+import { FaPills, FaHistory, FaPlus, FaTimes, FaCheck, FaTablets } from 'react-icons/fa';
 import './PatientDashboard.css';
 
 const PatientDashboard = ({ patientId, onNavigateToMedicines }) => {
@@ -10,7 +10,6 @@ const PatientDashboard = ({ patientId, onNavigateToMedicines }) => {
   const [transcripts, setTranscripts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
-  const [selectedMedication, setSelectedMedication] = useState(null);
   const [prescriptionForm, setPrescriptionForm] = useState({
     tabletName: '',
     quantity: 1,
@@ -181,7 +180,7 @@ const PatientDashboard = ({ patientId, onNavigateToMedicines }) => {
     const quantity = 10;
     const totalAmount = basePrice * quantity;
     
-    setSelectedMedication(medication);
+    
     setPrescriptionForm({
       tabletName: medication,
       quantity: quantity,
@@ -286,9 +285,6 @@ const PatientDashboard = ({ patientId, onNavigateToMedicines }) => {
                 
                 <div className="consultation-info">
                   <h3>{consultation.doctorName}</h3>
-                  {consultation.specialization && (
-                    <p className="consultation-specialization">{consultation.specialization}</p>
-                  )}
                   <p className="consultation-date">{consultation.date}</p>
                   <p className="consultation-duration">{consultation.duration || 0} minutes</p>
                   {consultation.rating && (

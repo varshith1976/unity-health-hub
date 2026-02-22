@@ -12,7 +12,6 @@ const AIDoctor = ({ onEndConsultation }) => {
   const [showOkButton, setShowOkButton] = useState(false);
   const [isGeneratingPrescription, setIsGeneratingPrescription] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const [transcript, setTranscript] = useState('');
   const [isAIThinking, setIsAIThinking] = useState(false);
 
   const messagesEndRef = useRef(null);
@@ -138,7 +137,7 @@ const AIDoctor = ({ onEndConsultation }) => {
           }
         }
 
-        setTranscript(finalTranscript || interimTranscript);
+        // setTranscript(finalTranscript || interimTranscript);
 
         if (finalTranscript) {
           setPatientInput(prev => prev + finalTranscript);

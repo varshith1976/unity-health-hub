@@ -500,7 +500,7 @@ const VideoConsultation = ({ appointment, onEndConsultation }) => {
         alert('Please allow microphone access to use voice chat.');
       }
     }
-  }, [isRecording, appointmentData]);
+  }, [isRecording]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleMute = () => {
     localStreamRef.current?.getAudioTracks().forEach(track => track.enabled = !track.enabled);

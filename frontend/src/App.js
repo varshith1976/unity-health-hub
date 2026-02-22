@@ -22,7 +22,7 @@ import './styles/App.css';
 
 function App() {
   const [currentView, setCurrentView] = useState('home');
-  const [currentStep, setCurrentStep] = useState('search');
+  const [, setCurrentStep] = useState('search');
   const [doctors, setDoctors] = useState([]);
   const [selectedDoctor, setSelectedDoctor] = useState(null);
   const [appointment, setAppointment] = useState(null);
@@ -348,8 +348,6 @@ function App() {
           onStartConsultation={handleStartConsultation}
           onStartAIDoctor={handleStartAIDoctor}
           onMedicineReminder={handleMedicineReminder}
-          onAboutUs={handleAboutUs}
-          onContact={handleContact}
         />
 
         <main className="main-content">
