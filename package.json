@@ -1,0 +1,16 @@
+{
+  "name": "unity-health-hub",
+  "version": "1.0.0",
+  "description": "Healthcare Appointment Scheduling System",
+  "scripts": {
+    "install:all": "cd backend && npm install && cd ../frontend && npm install",
+    "backend": "cd backend && npm run dev",
+    "frontend": "cd frontend && npm start",
+    "setup": "cd backend && npm run setup:full",
+    "start": "npm run backend",
+    "dev": "npm run backend"
+  },
+  "keywords": ["healthcare", "appointment", "react", "nodejs"],
+  "author": "",
+  "license": "MIT"
+}
