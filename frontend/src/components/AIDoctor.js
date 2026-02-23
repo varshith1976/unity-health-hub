@@ -13,6 +13,7 @@ const AIDoctor = ({ onEndConsultation }) => {
   const [isGeneratingPrescription, setIsGeneratingPrescription] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isAIThinking, setIsAIThinking] = useState(false);
+  const [conversationStarted, setConversationStarted] = useState(false);
 
   const messagesEndRef = useRef(null);
   const recognitionRef = useRef(null);
@@ -109,7 +110,7 @@ const AIDoctor = ({ onEndConsultation }) => {
   };
 
   useEffect(() => {
-    startConsultation();
+    // Don't auto-start - wait for user to speak first
     initSpeechRecognition();
   }, []);
 
@@ -121,27 +122,31 @@ const AIDoctor = ({ onEndConsultation }) => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = true;
+      recognitionRef.current.continuous = false;
       recognitionRef.current.interimResults = true;
+      recognitionRef.current.lang = 'en-US';
 
       recognitionRef.current.onresult = (event) => {
-        let interimTranscript = '';
         let finalTranscript = '';
 
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const transcript = event.results[i][0].transcript;
           if (event.results[i].isFinal) {
             finalTranscript += transcript + ' ';
-          } else {
-            interimTranscript += transcript;
           }
         }
 
-        // setTranscript(finalTranscript || interimTranscript);
-
-        if (finalTranscript) {
-          setPatientInput(prev => prev + finalTranscript);
+        if (finalTranscript.trim()) {
+          setPatientInput(finalTranscript.trim());
+          // Auto-send the message when voice input is complete
+          setTimeout(() => {
+            handleVoiceMessage(finalTranscript.trim());
+          }, 500);
         }
+      };
+
+      recognitionRef.current.onend = () => {
+        setIsListening(false);
       };
 
       recognitionRef.current.onerror = (event) => {
@@ -151,14 +156,65 @@ const AIDoctor = ({ onEndConsultation }) => {
     }
   };
 
-  const startConsultation = () => {
-    const introMessage = {
+  // Handle voice message - user speaks first, then AI responds
+  const handleVoiceMessage = async (text) => {
+    if (!text.trim()) return;
+    
+    // Start conversation if not started
+    if (!conversationStarted) {
+      setConversationStarted(true);
+    }
+
+    const userMessage = {
       id: Date.now(),
-      speaker: 'doctor',
-      text: "Hello! I'm Dr. AI Assistant, your AI Doctor at Unity Health Hub.\n\nI'm here to help you with your health concerns. You can type or use voice input to tell me your symptoms.\n\nWhat symptoms are you experiencing today?",
+      speaker: 'patient',
+      text: text,
       timestamp: new Date().toLocaleTimeString()
     };
-    setMessages([introMessage]);
+    setMessages(prev => [...prev, userMessage]);
+    setPatientInput('');
+    setIsAIThinking(true);
+
+    if (checkEmergency(text)) {
+      setIsAIThinking(false);
+      const emergencyMsg = {
+        id: Date.now() + 1,
+        speaker: 'doctor',
+        text: "⚠️ EMERGENCY DETECTED!\n\nThis sounds serious. Please:\n\n1. Call emergency services (108) immediately\n2. Visit your nearest hospital\n3. Don't wait - act fast!\n\nYour health is important!",
+        timestamp: new Date().toLocaleTimeString()
+      };
+      setMessages(prev => [...prev, emergencyMsg]);
+      return;
+    }
+
+    // Get AI response based on user's symptoms
+    const aiResponse = await callGroqAPI(text);
+    setIsAIThinking(false);
+
+    const doctorMessage = {
+      id: Date.now() + 1,
+      speaker: 'doctor',
+      text: aiResponse,
+      timestamp: new Date().toLocaleTimeString()
+    };
+    setMessages(prev => [...prev, doctorMessage]);
+  };
+
+  const startConsultation = () => {
+    // DON'T show greeting - just start listening for user input
+    setConversationStarted(true);
+  };
+
+  const handleStartWithVoice = () => {
+    // Start conversation and begin listening
+    if (!conversationStarted) {
+      startConsultation();
+    }
+    // Start voice recognition
+    if (!isListening) {
+      recognitionRef.current?.start();
+      setIsListening(true);
+    }
   };
 
   const toggleVoiceInput = () => {
@@ -166,6 +222,10 @@ const AIDoctor = ({ onEndConsultation }) => {
       recognitionRef.current?.stop();
       setIsListening(false);
     } else {
+      // Start conversation first if not started
+      if (!conversationStarted) {
+        startConsultation();
+      }
       recognitionRef.current?.start();
       setIsListening(true);
     }
@@ -385,6 +445,85 @@ Please consult a real doctor.
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
+
+  // Show start screen when conversation hasn't started
+  if (!conversationStarted) {
+    return (
+      <div className="ai-doctor-container">
+        <div className="ai-doctor-header">
+          <div className="ai-doctor-info">
+            <div className="ai-avatar">
+              <FaRobot />
+            </div>
+            <div className="ai-info">
+              <h2>{doctorInfo.name}</h2>
+              <span className="doctor-specialization">{doctorInfo.specialization} | {doctorInfo.hospital}</span>
+              <span className="status ready">Tap to start speaking</span>
+            </div>
+          </div>
+          <button className="end-call-btn" onClick={handleEndCall}>
+            <FaTimes /> End
+          </button>
+        </div>
+
+        <div className="ai-doctor-content">
+          <div className="conversation-panel">
+            <div className="start-screen">
+              <div className="start-avatar">
+                <FaRobot />
+              </div>
+              <h2>Welcome to AI Doctor</h2>
+              <p>Tell me about your symptoms and I'll help you with medical advice</p>
+              
+              <button 
+                className="start-voice-btn"
+                onClick={handleStartWithVoice}
+              >
+                <FaMicrophone />
+                <span>Tap to Speak</span>
+              </button>
+              
+              <p className="start-hint">
+                Or type your symptoms in the box below
+              </p>
+              
+              <div className="input-section">
+                <input
+                  type="text"
+                  value={patientInput}
+                  onChange={(e) => setPatientInput(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter' && patientInput.trim()) {
+                      if (!conversationStarted) {
+                        startConsultation();
+                      }
+                      handleSendMessage();
+                    }
+                  }}
+                  placeholder="Type your symptoms here..."
+                  className="patient-input"
+                />
+                <button
+                  className="send-btn"
+                  onClick={() => {
+                    if (patientInput.trim()) {
+                      if (!conversationStarted) {
+                        startConsultation();
+                      }
+                      handleSendMessage();
+                    }
+                  }}
+                  disabled={!patientInput.trim()}
+                >
+                  <FaPaperPlane />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="ai-doctor-container">

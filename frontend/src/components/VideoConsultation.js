@@ -1,14 +1,13 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { FaMicrophone, FaMicrophoneSlash, FaVideo, FaVideoSlash, FaPhoneSlash, FaStar, FaUser, FaClock, FaTimes, FaRobot, FaBrain, FaStethoscope } from 'react-icons/fa';
+import React, { useState, useEffect, useRef } from 'react';
+import { FaVideo, FaVideoSlash, FaPhoneSlash, FaStar, FaUser, FaClock, FaTimes, FaRobot, FaBrain, FaStethoscope, FaPaperPlane } from 'react-icons/fa';
 import { generateClinicalAnalysis } from '../utils/clinicalAnalysis';
 import './VideoConsultation.css';
 
 const VideoConsultation = ({ appointment, onEndConsultation }) => {
-  const [isRecording, setIsRecording] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [transcripts, setTranscripts] = useState([]);
-  const [currentTranscript, setCurrentTranscript] = useState('');
+  const [patientInput, setPatientInput] = useState('');
   const [showEndModal, setShowEndModal] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState('connecting');
@@ -20,6 +19,7 @@ const VideoConsultation = ({ appointment, onEndConsultation }) => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [clinicalAnalysis, setClinicalAnalysis] = useState(null);
   const [showAnalysis, setShowAnalysis] = useState(false);
+  const [consultationStarted, setConsultationStarted] = useState(false);
   const [consultationStats, setConsultationStats] = useState({
     doctorName: '',
     specialization: '',
@@ -31,13 +31,10 @@ const VideoConsultation = ({ appointment, onEndConsultation }) => {
   
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
-  const recognitionRef = useRef(null);
   const transcriptContainerRef = useRef(null);
   const localStreamRef = useRef(null);
   const timerRef = useRef(null);
   const secondsRef = useRef(0);
-  const finalResultTimerRef = useRef(null);
-  const lastTranscriptRef = useRef('');
   const hasGreetedRef = useRef(false);
 
   // Get appointment data - handle different field names
@@ -66,12 +63,11 @@ const VideoConsultation = ({ appointment, onEndConsultation }) => {
     };
   }, [appointment]);
 
-  // Simple local AI responses (fallback when backend unavailable)
+  // Simple local AI responses
   const getLocalAIResponse = (message) => {
     const lowerMessage = message.toLowerCase();
     const specialization = appointmentData.specialization || 'General Physician';
     
-    // Health keywords check
     const healthKeywords = ['health', 'medical', 'doctor', 'hospital', 'medicine', 'symptom', 'pain', 'fever', 'cough', 'cold', 'headache', 'stomach', 'heart', 'blood', 'pressure', 'diabetes', 'treatment', 'prescription', 'disease', 'illness', 'infection', 'virus', 'bacteria', 'sick', 'unwell', 'ache', 'breathing', 'chest', 'lung', 'liver', 'kidney', 'brain', 'nerve', 'bone', 'joint', 'muscle', 'skin', 'eye', 'ear', 'nose', 'throat', 'pregnancy', 'baby', 'child', 'mental', 'stress', 'anxiety', 'depression', 'sleep', 'nutrition', 'diet', 'exercise', 'weight', 'allergy', 'asthma', 'arthritis', 'nausea', 'vomiting', 'diarrhea', 'constipation', 'fatigue', 'weakness', 'dizziness', 'swelling', 'rash', 'itching', 'bleeding', 'fracture', 'sprain', 'vaccine'];
     
     const isHealthRelated = healthKeywords.some(keyword => lowerMessage.includes(keyword));
@@ -80,7 +76,6 @@ const VideoConsultation = ({ appointment, onEndConsultation }) => {
       return `I'm specifically designed to help with health and medical concerns related to ${specialization}. Please ask me questions about your symptoms, medical conditions, or health-related topics.`;
     }
     
-    // Simple pattern matching responses
     if (lowerMessage.includes('fever') || lowerMessage.includes('temperature') || lowerMessage.includes('hot')) {
       return "I see you have fever. How high is your temperature? Have you taken any medication for it? How long have you had this fever?";
     }
@@ -133,7 +128,6 @@ const VideoConsultation = ({ appointment, onEndConsultation }) => {
       return "I see you're managing a chronic condition. What are your recent readings? Are you taking any medications regularly?";
     }
     
-    // Default response based on specialization
     if (specialization === 'Cardiologist') {
       return "As a heart specialist, I'm here to help with your cardiovascular concerns. Can you describe what symptoms you're experiencing?";
     }
@@ -210,7 +204,6 @@ const VideoConsultation = ({ appointment, onEndConsultation }) => {
     return () => {
       cleanup();
       if (timerRef.current) clearInterval(timerRef.current);
-      if (finalResultTimerRef.current) clearTimeout(finalResultTimerRef.current);
     };
   }, [appointmentData]);
 
@@ -239,98 +232,6 @@ const VideoConsultation = ({ appointment, onEndConsultation }) => {
       console.error('Error accessing media devices:', error);
       setConnectionStatus('error');
     }
-  };
-
-  // Initialize speech recognition
-  const initializeSpeechRecognition = () => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    
-    if (!SpeechRecognition) {
-      alert('Speech recognition is not supported in your browser. Please use Chrome or Edge.');
-      return;
-    }
-
-    // Create new recognition instance
-    const recognition = new SpeechRecognition();
-    recognition.continuous = false; // Better for capturing individual utterances
-    recognition.interimResults = true;
-    recognition.lang = 'en-US';
-    recognition.maxAlternatives = 3;
-
-    recognition.onresult = (event) => {
-      let interimTranscript = '';
-      let finalTranscript = '';
-
-      for (let i = 0; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript.trim();
-        if (event.results[i].isFinal) {
-          finalTranscript = transcript;
-        } else {
-          interimTranscript += transcript;
-        }
-      }
-
-      if (interimTranscript) {
-        setCurrentTranscript(interimTranscript);
-      }
-
-      if (finalTranscript) {
-        const finalText = finalTranscript.trim();
-        
-        if (finalText !== lastTranscriptRef.current && finalText.length > 2) {
-          lastTranscriptRef.current = finalText;
-          setCurrentTranscript('');
-          
-          const newTranscript = {
-            id: Date.now(),
-            text: finalText,
-            timestamp: new Date().toLocaleTimeString(),
-            speaker: 'patient'
-          };
-          
-          setTranscripts(prev => [...prev, newTranscript]);
-          
-          setConsultationStats(prev => ({
-            ...prev,
-            patientSpeakingTime: prev.patientSpeakingTime + 2,
-            totalMessages: prev.totalMessages + 1
-          }));
-
-          if (aiEnabled && finalText.length > 3) {
-            if (finalResultTimerRef.current) clearTimeout(finalResultTimerRef.current);
-            
-            finalResultTimerRef.current = setTimeout(() => {
-              handleAIResponse(finalText);
-            }, 1500);
-          }
-        }
-      }
-    };
-
-    recognition.onerror = (event) => {
-      console.log('Speech recognition error:', event.error);
-    };
-
-    recognition.onend = () => {
-      if (isRecording) {
-        try {
-          const newRecognition = new SpeechRecognition();
-          newRecognition.continuous = false;
-          newRecognition.interimResults = true;
-          newRecognition.lang = 'en-US';
-          newRecognition.maxAlternatives = 3;
-          newRecognition.onresult = recognition.onresult;
-          newRecognition.onerror = recognition.onerror;
-          newRecognition.onend = recognition.onend;
-          recognitionRef.current = newRecognition;
-          newRecognition.start();
-        } catch (e) {
-          console.log('Failed to restart recognition:', e);
-        }
-      }
-    };
-
-    recognitionRef.current = recognition;
   };
 
   const handleAIResponse = async (patientMessage) => {
@@ -380,15 +281,15 @@ const VideoConsultation = ({ appointment, onEndConsultation }) => {
     }
   };
 
-  // Fixed speakText function with better voice selection
+  // Speak text function
   const speakText = (text) => {
     if (!window.speechSynthesis) return;
     
     window.speechSynthesis.cancel();
     
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.85; // Slightly slower for clarity
-    utterance.pitch = 1.0; // Natural pitch
+    utterance.rate = 0.85;
+    utterance.pitch = 1.0;
     utterance.volume = 1;
     
     const loadVoices = () => {
@@ -396,18 +297,14 @@ const VideoConsultation = ({ appointment, onEndConsultation }) => {
       
       let selectedVoice = null;
       
-      // Try to find a clear female English voice
       const femaleVoice = voices.find(voice => 
         voice.lang.startsWith('en') && 
         (voice.name.includes('Female') || 
          voice.name.includes('Samantha') || 
          voice.name.includes('Victoria') ||
-         voice.name.includes('Zira') ||
-         voice.name.includes('Google UK Female') ||
-         voice.name.includes('Microsoft Female'))
+         voice.name.includes('Zira'))
       );
       
-      // If no female voice, try any clear English voice
       if (!femaleVoice) {
         selectedVoice = voices.find(voice => 
           voice.lang.startsWith('en') && 
@@ -447,60 +344,64 @@ const VideoConsultation = ({ appointment, onEndConsultation }) => {
   };
 
   const cleanup = () => {
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch (e) {}
-    }
-    
-    if (finalResultTimerRef.current) clearTimeout(finalResultTimerRef.current);
     localStreamRef.current?.getTracks().forEach(track => track.stop());
     if (timerRef.current) clearInterval(timerRef.current);
   };
 
-  const toggleRecording = useCallback(() => {
-    if (isRecording) {
-      try {
-        if (recognitionRef.current) {
-          recognitionRef.current.stop();
-        }
-      } catch (e) {
-        console.log('Stop error:', e);
-      }
-      setIsRecording(false);
-      setCurrentTranscript('');
-    } else {
-      lastTranscriptRef.current = '';
-      setCurrentTranscript('');
-      
-      initializeSpeechRecognition();
-      
-      try {
-        if (recognitionRef.current) {
-          recognitionRef.current.start();
-          setIsRecording(true);
-          
-          if (!hasGreetedRef.current) {
-            hasGreetedRef.current = true;
-            setTimeout(() => {
-              const greeting = `Hello! I am your AI health assistant. How can I help you today? Please tell me about your health concerns.`;
-              const greetingTranscript = {
-                id: Date.now(),
-                text: greeting,
-                timestamp: new Date().toLocaleTimeString(),
-                speaker: 'ai'
-              };
-              setTranscripts(prev => [...prev, greetingTranscript]);
-              speakText(greeting);
-            }, 1500);
-          }
-        }
-      } catch (e) {
-        console.log('Start failed:', e);
-        alert('Please allow microphone access to use voice chat.');
-      }
+  // Start consultation - AI greets first
+  const startConsultation = () => {
+    setConsultationStarted(true);
+    
+    if (!hasGreetedRef.current) {
+      hasGreetedRef.current = true;
+      setTimeout(() => {
+        const greeting = `Hello! I am your AI health assistant. I am ${appointmentData.doctorName}, specializing in ${appointmentData.specialization}. Please tell me about your health concerns. What symptoms are you experiencing? You can type your response below.`;
+        const greetingTranscript = {
+          id: Date.now(),
+          text: greeting,
+          timestamp: new Date().toLocaleTimeString(),
+          speaker: 'ai'
+        };
+        setTranscripts(prev => [...prev, greetingTranscript]);
+        speakText(greeting);
+      }, 1000);
     }
-  }, [isRecording]); // eslint-disable-line react-hooks/exhaustive-deps
+  };
+
+  // Handle sending patient message
+  const handleSendMessage = () => {
+    if (!patientInput.trim() || isAILoading) return;
+    
+    const newTranscript = {
+      id: Date.now(),
+      text: patientInput,
+      timestamp: new Date().toLocaleTimeString(),
+      speaker: 'patient'
+    };
+    
+    setTranscripts(prev => [...prev, newTranscript]);
+    setConsultationStats(prev => ({
+      ...prev,
+      patientSpeakingTime: prev.patientSpeakingTime + 2,
+      totalMessages: prev.totalMessages + 1
+    }));
+    
+    const message = patientInput;
+    setPatientInput('');
+    
+    // Get AI response after a short delay
+    setTimeout(() => {
+      handleAIResponse(message);
+    }, 500);
+  };
+
+  // Handle key press
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
 
   const toggleMute = () => {
     localStreamRef.current?.getAudioTracks().forEach(track => track.enabled = !track.enabled);
@@ -520,8 +421,7 @@ const VideoConsultation = ({ appointment, onEndConsultation }) => {
     window.speechSynthesis.cancel();
     cleanup();
     
-    // Generate clinical analysis
-    const analysis = generateClinicalAnalysis(transcripts);
+    const analysis = generateClinicalAnalysis(transcripts, appointmentData.specialization);
     setClinicalAnalysis(analysis);
     
     setShowEndModal(false);
@@ -584,12 +484,73 @@ const VideoConsultation = ({ appointment, onEndConsultation }) => {
     onEndConsultation(consultationData);
   };
 
-  // Scroll to bottom of transcript
+  // Add medications to Medication Reminder
+  const addToMedicationReminder = () => {
+    if (!clinicalAnalysis || !clinicalAnalysis.medication_recommendations) return;
+    
+    const medications = clinicalAnalysis.medication_recommendations;
+    const STORAGE_KEY = 'healthcare_medications';
+    
+    try {
+      // Get existing medications
+      const existingMeds = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      
+      // Parse each medication recommendation and add to list
+      const newMeds = medications
+        .filter(med => !med.includes('Rest and adequate sleep') && 
+                       !med.includes('Drink plenty') && 
+                       !med.includes('Warm salt water') &&
+                       !med.includes('Steam inhalation') &&
+                       !med.includes('Honey and ginger') &&
+                       !med.includes('Balanced diet') &&
+                       !med.includes('Probiotics'))
+        .slice(0, 6) // Limit to 6 medications
+        .map((med, index) => {
+          // Extract medicine name and dosage
+          const parts = med.split('(')[0].trim();
+          const dosageMatch = med.match(/\d+\s*(mg|ml|g|iu|mcg)/i);
+          const dosage = dosageMatch ? dosageMatch[0] : 'As directed';
+          
+          // Determine time slots based on medication type
+          let times = ['08:00'];
+          if (med.includes('twice') || med.includes('twice daily')) {
+            times = ['08:00', '20:00'];
+          } else if (med.includes('three times') || med.includes('thrice')) {
+            times = ['08:00', '14:00', '20:00'];
+          } else if (med.includes('night') || med.includes('bedtime')) {
+            times = ['21:00'];
+          } else if (med.includes('morning') || med.includes('breakfast')) {
+            times = ['08:00'];
+          }
+          
+          return {
+            id: `${Date.now()}-${index}`,
+            name: parts,
+            dosage: dosage,
+            times: times,
+            durationDays: 7,
+            mealInstruction: med.includes('food') ? 'after-food' : 'any',
+            startDate: new Date().toISOString().split('T')[0],
+            status: 'pending'
+          };
+        });
+      
+      // Add new medications to existing ones
+      const updatedMeds = [...existingMeds, ...newMeds];
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedMeds));
+      
+      alert(`${newMeds.length} medications added to your Medication Reminder!`);
+    } catch (error) {
+      console.error('Error adding medications:', error);
+      alert('Failed to add medications. Please try again.');
+    }
+  };
+
   useEffect(() => {
     if (transcriptContainerRef.current) {
       transcriptContainerRef.current.scrollTop = transcriptContainerRef.current.scrollHeight;
     }
-  }, [transcripts, currentTranscript]);
+  }, [transcripts]);
 
   return (
     <div className="video-consultation-container">
@@ -641,7 +602,7 @@ const VideoConsultation = ({ appointment, onEndConsultation }) => {
           onClick={toggleMute}
           title={isMuted ? 'Unmute' : 'Mute'}
         >
-          {isMuted ? <FaMicrophoneSlash /> : <FaMicrophone />}
+          {isMuted ? <FaVideoSlash /> : <FaVideo />}
         </button>
         
         <button 
@@ -652,23 +613,25 @@ const VideoConsultation = ({ appointment, onEndConsultation }) => {
           {isVideoOff ? <FaVideoSlash /> : <FaVideo />}
         </button>
 
-        <button 
-          className={`control-btn record-btn ${isRecording ? 'recording' : ''}`}
-          onClick={toggleRecording}
-          title={isRecording ? 'Stop Voice Chat' : 'Start Voice Chat'}
-        >
-          {isRecording ? <span className="recording-dot">●</span> : <FaMicrophone />}
-          <span className="btn-label">{isRecording ? 'Listening...' : 'Start Voice'}</span>
-        </button>
-
-        <button 
-          className={`control-btn ai-btn ${aiEnabled ? 'active' : ''}`}
-          onClick={toggleAI}
-          title={aiEnabled ? 'Disable AI' : 'Enable AI'}
-        >
-          <FaRobot />
-          <span className="btn-label">AI {aiEnabled ? 'ON' : 'OFF'}</span>
-        </button>
+        {!consultationStarted ? (
+          <button 
+            className="control-btn record-btn"
+            onClick={startConsultation}
+            title="Start Consultation"
+          >
+            <FaRobot />
+            <span className="btn-label">Start Chat</span>
+          </button>
+        ) : (
+          <button 
+            className={`control-btn ai-btn ${aiEnabled ? 'active' : ''}`}
+            onClick={toggleAI}
+            title={aiEnabled ? 'Disable AI' : 'Enable AI'}
+          >
+            <FaRobot />
+            <span className="btn-label">AI {aiEnabled ? 'ON' : 'OFF'}</span>
+          </button>
+        )}
 
         {isSpeaking && (
           <div className="ai-speaking-indicator">
@@ -687,35 +650,64 @@ const VideoConsultation = ({ appointment, onEndConsultation }) => {
       </div>
 
       <div className="transcript-section">
-        <h3>Live Transcript 
+        <h3>Live Chat 
           {aiEnabled && <span className="ai-badge"><FaRobot /> AI Enabled - {appointmentData.specialization}</span>}
         </h3>
         
         <div className="transcript-box" ref={transcriptContainerRef}>
-          {transcripts.length === 0 && !currentTranscript && (
-            <p className="no-transcript">
-              Welcome! Click "Start Voice" button and tell me your health concerns.<br/>
-              I'm {appointmentData.doctorName}, specializing in {appointmentData.specialization}.<br/>
-              How can I help you today?
-            </p>
-          )}
-          
-          {transcripts.map((t) => (
-            <div key={t.id} className={`transcript-item ${t.speaker}`}>
-              <span className="speaker">
-                {t.speaker === 'patient' ? 'You' : t.speaker === 'ai' ? 'AI Doctor' : 'Doctor'}:
-              </span>
-              <span className="text">{t.text}</span>
+          {!consultationStarted ? (
+            <div className="no-transcript" style={{ textAlign: 'center', padding: '40px' }}>
+              <p>Welcome to your {appointmentData.specialization} consultation!</p>
+              <p>Click "Start Chat" button to begin your consultation with the AI Doctor.</p>
+              <button 
+                className="btn btn-primary" 
+                onClick={startConsultation}
+                style={{ marginTop: '20px', padding: '12px 30px', fontSize: '16px' }}
+              >
+                Start Consultation
+              </button>
             </div>
-          ))}
-          
-          {currentTranscript && (
-            <div className="transcript-item interim">
-              <span className="speaker">You:</span>
-              <span className="text">{currentTranscript}</span>
-            </div>
+          ) : (
+            <>
+              {transcripts.map((t) => (
+                <div key={t.id} className={`transcript-item ${t.speaker}`}>
+                  <span className="speaker">
+                    {t.speaker === 'patient' ? 'You' : t.speaker === 'ai' ? 'AI Doctor' : 'Doctor'}:
+                  </span>
+                  <span className="text">{t.text}</span>
+                </div>
+              ))}
+              
+              {isAILoading && (
+                <div className="transcript-item ai">
+                  <span className="speaker">AI Doctor:</span>
+                  <span className="text" style={{ fontStyle: 'italic', color: '#888' }}>Typing...</span>
+                </div>
+              )}
+            </>
           )}
         </div>
+
+        {consultationStarted && (
+          <div className="chat-input-container">
+            <input
+              type="text"
+              value={patientInput}
+              onChange={(e) => setPatientInput(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Type your symptoms or questions here..."
+              className="chat-input"
+              disabled={isAILoading}
+            />
+            <button 
+              className="chat-send-btn"
+              onClick={handleSendMessage}
+              disabled={!patientInput.trim() || isAILoading}
+            >
+              <FaPaperPlane />
+            </button>
+          </div>
+        )}
       </div>
 
       {showEndModal && (
@@ -810,8 +802,11 @@ const VideoConsultation = ({ appointment, onEndConsultation }) => {
               </div>
             )}
 
-            <button className="btn btn-primary" onClick={handleContinueToFeedback}>
-              Continue to Feedback
+            <button className="btn btn-primary ok-btn" onClick={() => {
+              addToMedicationReminder();
+              handleContinueToFeedback();
+            }}>
+              ✓ OK - Add to Medication Reminder
             </button>
           </div>
         </div>

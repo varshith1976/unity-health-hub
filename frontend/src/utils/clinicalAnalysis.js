@@ -1,7 +1,7 @@
 // Local AI Clinical Analysis Engine
 // Generates clinical analysis from conversation transcripts
 
-export const generateClinicalAnalysis = (transcripts) => {
+export const generateClinicalAnalysis = (transcripts, specialization = 'General Physician') => {
   const patientMessages = transcripts
     .filter(t => t.speaker === 'patient')
     .map(t => t.text.toLowerCase())
@@ -10,7 +10,7 @@ export const generateClinicalAnalysis = (transcripts) => {
   const symptoms = extractSymptoms(patientMessages);
   const severity = assessSeverity(symptoms, patientMessages);
   const diagnosis = suggestDiagnosis(symptoms, severity);
-  const medications = recommendMedications(symptoms, diagnosis, severity);
+  const medications = recommendMedications(symptoms, diagnosis, severity, specialization);
   const riskFactors = identifyRiskFactors(patientMessages);
   const redFlags = detectRedFlags(symptoms, patientMessages);
 
@@ -125,8 +125,99 @@ const suggestDiagnosis = (symptoms, severity) => {
   return diagnoses.slice(0, 3);
 };
 
-const recommendMedications = (symptoms, diagnosis, severity) => {
+// Get medications based on specialization
+const getSpecializationMedications = (specialization) => {
   const medications = [];
+  
+  switch (specialization) {
+    case 'Cardiologist':
+      medications.push('Aspirin 75mg (1 tablet daily - for heart health)');
+      medications.push('Atorvastatin 10mg (1 tablet at night)');
+      medications.push('Metoprolol 25mg (1 tablet twice daily - if prescribed)');
+      medications.push('Cardiovasin 10mg (1 tablet daily)');
+      medications.push('Ecosprin 75mg (1 tablet after food)');
+      medications.push('Rosuvastatin 5mg (1 tablet at bedtime)');
+      medications.push('Clopidogrel 75mg (1 tablet daily)');
+      break;
+      
+    case 'Neurologist':
+      medications.push('Pregabalin 75mg (1 capsule twice daily)');
+      medications.push('Methylcobalamin 1500mcg (1 tablet daily)');
+      medications.push('Amitriptyline 10mg (1 tablet at bedtime)');
+      medications.push('Divalproex 500mg (1 tablet twice daily)');
+      medications.push('Topiramate 25mg (1 tablet twice daily)');
+      medications.push('Levitiracetam 500mg (1 tablet twice daily)');
+      medications.push('Gabapentin 300mg (1 capsule three times daily)');
+      break;
+      
+    case 'Dermatologist':
+      medications.push('Mometasone Furoate Cream (apply on affected area)');
+      medications.push('Clindamycin Gel (apply twice daily)');
+      medications.push('Itraconazole 100mg (1 capsule twice daily)');
+      medications.push('Fluconazole 150mg (1 tablet weekly)');
+      medications.push('Adapalene Gel 0.1% (apply at night)');
+      medications.push('Tretinoin Cream 0.025% (apply at night)');
+      medications.push('Hydroquinone Cream 2% (apply on dark spots)');
+      break;
+      
+    case 'Orthopedic Surgeon':
+      medications.push('Calcium Carbonate 500mg (1 tablet twice daily)');
+      medications.push('Vitamin D3 1000IU (1 tablet daily)');
+      medications.push('Glucosamine 500mg (1 tablet twice daily)');
+      medications.push('Diclofenac Gel (apply on joints)');
+      medications.push('Chondroitin 250mg (1 capsule twice daily)');
+      medications.push('Pain Ointment (apply when needed)');
+      medications.push('Muscle Relaxant - Tolperisone 150mg (1 tablet twice daily)');
+      break;
+      
+    case 'Pediatrician':
+      medications.push('Paracetamol Syrup 250mg (5ml when needed)');
+      medications.push('Cetirizine Syrup (2.5ml at bedtime)');
+      medications.push('ORS Powder (1 sachet in 1L water)');
+      medications.push('Zinc Syrup (5ml daily)');
+      medications.push('Amoxicillin Syrup 250mg (5ml three times daily)');
+      medications.push('Azithromycin Syrup (5ml once daily)');
+      medications.push('Multivitamin Syrup (5ml daily)');
+      break;
+      
+    case 'Ophthalmologist':
+      medications.push('Refresh Tears Eye Drops (2 drops 4 times daily)');
+      medications.push('Ciprofloxacin Eye Drops (2 drops every 2 hours)');
+      medications.push('Fluorometholone Eye Drops (2 drops 4 times daily)');
+      medications.push('Systane Ultra Eye Drops (use as needed)');
+      medications.push('Timolol Eye Drops 0.5% (1 drop twice daily)');
+      medications.push('Homide Eye Drops (1 drop at bedtime)');
+      medications.push('Vitamin A Capsule 5000IU (1 capsule daily)');
+      break;
+      
+    case 'Nephrologist':
+      medications.push('Sevelamer 400mg (1 tablet with meals)');
+      medications.push('Sodium Bicarbonate 500mg (1 tablet twice daily)');
+      medications.push('Furosemide 40mg (1 tablet in morning)');
+      medications.push('Erythropoietin Injection 4000IU (weekly)');
+      medications.push('Iron Sucrose Injection (IV weekly)');
+      medications.push('Calcium Acetate 667mg (1 tablet with meals)');
+      medications.push('Alpha Ketoanalogue (1 tablet per 10kg body weight)');
+      break;
+      
+    default:
+      // No specialization-specific medications
+      break;
+  }
+  
+  return medications;
+};
+
+const recommendMedications = (symptoms, diagnosis, severity, specialization) => {
+  const medications = [];
+  
+  // Get specialization-specific medications first
+  const specMeds = getSpecializationMedications(specialization);
+  
+  // Add specialization medications first
+  if (specMeds.length > 0) {
+    medications.push(...specMeds);
+  }
   
   // Always include basic medications
   const hasFever = symptoms.some(s => s.includes('fever'));
@@ -191,7 +282,7 @@ const recommendMedications = (symptoms, diagnosis, severity) => {
   medications.push('Drink plenty of fluids (2-3 liters water daily)');
   medications.push('Warm salt water gargle (if sore throat)');
   
-  // Ensure we have 4-13 medications
+  // Ensure we have medications
   if (medications.length < 4) {
     medications.push('Probiotics (1 capsule daily)');
     medications.push('Steam inhalation (twice daily)');
@@ -199,8 +290,8 @@ const recommendMedications = (symptoms, diagnosis, severity) => {
     medications.push('Balanced diet with fruits and vegetables');
   }
   
-  // Return 4-13 medications
-  return medications.slice(0, 13);
+  // Return medications
+  return medications.slice(0, 15);
 };
 
 const identifyRiskFactors = (text) => {
