@@ -40,3 +40,6 @@ coverage/
 .cache/
 temp/
 tmp/
+
+# Submodules
+medicide-remainder-first-project/
