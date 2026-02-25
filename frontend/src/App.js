@@ -246,7 +246,7 @@ function App() {
     }
 
     if (currentView === 'aiDoctor') {
-      return <AIDoctor onEndConsultation={handleEndConsultation} />;
+      return <AIDoctor onEndConsultation={handleEndConsultation} onNavigateToMedicines={handleMedicineReminder} />;
     }
 
     if (currentView === 'telemedicine') {

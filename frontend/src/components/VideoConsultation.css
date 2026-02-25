@@ -129,11 +129,65 @@
   justify-content: center;
   color: white;
   gap: 1rem;
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
 }
 
 .video-placeholder p {
   font-size: 1rem;
   opacity: 0.8;
+}
+
+.waiting-content {
+  text-align: center;
+  padding: 20px;
+}
+
+.waiting-avatar {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.waiting-content h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0 0 10px;
+  color: white;
+}
+
+.waiting-message {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0 0 8px;
+}
+
+.waiting-hint {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0 0 15px;
+}
+
+.waiting-content .start-btn {
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 25px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.waiting-content .start-btn:hover {
+  background: linear-gradient(135deg, #1d4ed8, #2563eb);
+  transform: scale(1.05);
 }
 
 .local-video {

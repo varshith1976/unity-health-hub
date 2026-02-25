@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FaRobot, FaUser, FaTimes, FaPaperPlane, FaDownload, FaCheckCircle, FaPlus, FaBell, FaMicrophone, FaStop } from 'react-icons/fa';
+import { getAIResponse } from '../utils/aiResponses';
 import './AIDoctor.css';
 
 const GROQ_API_KEY = 'GROQ_API_KEY';
 
-const AIDoctor = ({ onEndConsultation }) => {
+const AIDoctor = ({ onEndConsultation, onNavigateToMedicines }) => {
   const [messages, setMessages] = useState([]);
   const [patientInput, setPatientInput] = useState('');
   const [showPrescription, setShowPrescription] = useState(false);
@@ -26,70 +27,113 @@ const AIDoctor = ({ onEndConsultation }) => {
 
   const symptomDatabase = {
     fever: {
-      keywords: ['fever', 'temperature', 'hot body', 'febrile', 'high temperature'],
+      keywords: ['fever', 'temperature', 'hot body', 'febrile', 'high temperature', 'high fever', 'feeling hot'],
       response: "For fever, I recommend:\n\nMedicines:\n- Tab. Paracetamol 500mg - 1 tablet when needed (max 4/day)\n- Tab. Vitamin C 1000mg - 1 tablet daily\n\nAdvice:\n- Drink plenty of water (8+ glasses daily)\n- Get complete rest\n- Sponge with lukewarm water\n- Avoid cold drinks\n\nConsult a doctor if fever persists beyond 3 days!",
       medicines: [
-        { name: 'Paracetamol 500mg', timing: { morning: '8:00 AM', afternoon: '2:00 PM', night: '8:00 PM' }, duration: '5', dosage: '1 tablet', instructions: 'After food', quantity: 15 },
+        { name: 'Paracetamol 500mg', timing: { morning: '8:00 AM', afternoon: '2:00 PM', night: '8:00 PM' }, duration: '5', dosage: '1 tablet', instructions: 'After food when needed', quantity: 15 },
         { name: 'Vitamin C 1000mg', timing: { morning: '8:00 AM' }, duration: '10', dosage: '1 tablet', instructions: 'With breakfast', quantity: 10 }
       ]
     },
     cold: {
-      keywords: ['cold', 'running nose', 'nasal', 'sneezing', 'flu', 'congestion'],
-      response: "For cold, I recommend:\n\nMedicines:\n- Tab. Cetrizine 10mg - 1 tablet at night\n- Tab. Vitamin C 1000mg - 1 tablet daily\n\nAdvice:\n- Drink warm water with lemon and honey\n- Get plenty of rest\n- Use steam inhalation\n- Avoid cold drinks and AC\n\nMost colds improve in 5-7 days!",
+      keywords: ['cold', 'running nose', 'nasal', 'sneezing', 'flu', 'congestion', 'nasal congestion', 'stuffy nose'],
+      response: "For cold, I recommend:\n\nMedicines:\n- Tab. Cetrizine 10mg - 1 tablet at night\n- Tab. Vitamin C 1000mg - 1 tablet daily\n- Syrup. Alex 1 tsp - 3 times daily\n\nAdvice:\n- Drink warm water with lemon and honey\n- Get plenty of rest\n- Use steam inhalation\n- Avoid cold drinks and AC\n\nMost colds improve in 5-7 days!",
       medicines: [
         { name: 'Cetrizine 10mg', timing: { night: '10:00 PM' }, duration: '5', dosage: '1 tablet', instructions: 'At night', quantity: 5 },
-        { name: 'Vitamin C 1000mg', timing: { morning: '8:00 AM' }, duration: '10', dosage: '1 tablet', instructions: 'With breakfast', quantity: 10 }
+        { name: 'Vitamin C 1000mg', timing: { morning: '8:00 AM' }, duration: '10', dosage: '1 tablet', instructions: 'With breakfast', quantity: 10 },
+        { name: 'Alex Syrup', timing: { morning: '8:00 AM', afternoon: '2:00 PM', night: '8:00 PM' }, duration: '5', dosage: '1 tsp', instructions: 'After food', quantity: 15 }
       ]
     },
     cough: {
-      keywords: ['cough', 'coughing', 'throat pain', 'phlegm'],
-      response: "For cough, I recommend:\n\nMedicines:\n- Syrup. Benadryl 1 tsp - 3 times daily\n- Tab. Bisolvan 1 tablet - 3 times daily\n\nAdvice:\n- Drink warm water\n- Take honey (if not diabetic)\n- Avoid cold drinks\n- Use humidifier\n\nConsult a doctor if cough lasts more than 2 weeks!",
+      keywords: ['cough', 'coughing', 'throat pain', 'phlegm', 'dry cough', 'wet cough', 'chest congestion'],
+      response: "For cough, I recommend:\n\nMedicines:\n- Syrup. Benadryl 1 tsp - 3 times daily\n- Tab. Bisolvan 1 tablet - 3 times daily\n- Tab. Codeine 10mg - 1 tablet at night (if severe)\n\nAdvice:\n- Drink warm water\n- Take honey (if not diabetic)\n- Avoid cold drinks\n- Use humidifier\n\nConsult a doctor if cough lasts more than 2 weeks!",
       medicines: [
         { name: 'Benadryl Syrup', timing: { morning: '8:00 AM', afternoon: '2:00 PM', night: '8:00 PM' }, duration: '5', dosage: '1 tsp', instructions: 'After food', quantity: 15 },
         { name: 'Bisolvan', timing: { morning: '8:00 AM', afternoon: '2:00 PM', night: '8:00 PM' }, duration: '5', dosage: '1 tablet', instructions: 'After food', quantity: 15 }
       ]
     },
     headache: {
-      keywords: ['headache', 'head pain', 'migraine', 'head ache'],
-      response: "For headache, I recommend:\n\nMedicines:\n- Tab. Paracetamol 500mg - 1 tablet when needed\n\nAdvice:\n- Rest in a quiet, dark room\n- Drink water - dehydration causes headaches\n- Avoid screen time\n- Apply lemon juice on forehead\n\nSeek urgent care if severe headache with fever!",
+      keywords: ['headache', 'head pain', 'migraine', 'head ache', 'severe headache', 'temple pain'],
+      response: "For headache, I recommend:\n\nMedicines:\n- Tab. Paracetamol 500mg - 1 tablet when needed\n- Tab. Ibuprofen 400mg - 1 tablet after food (if severe)\n- Tab. Domstal 10mg - 1 tablet (if with nausea)\n\nAdvice:\n- Rest in a quiet, dark room\n- Drink water - dehydration causes headaches\n- Avoid screen time\n- Apply lemon juice on forehead\n\nSeek urgent care if severe headache with fever!",
       medicines: [
-        { name: 'Paracetamol 500mg', timing: { morning: '8:00 AM', afternoon: '2:00 PM' }, duration: '3', dosage: '1 tablet', instructions: 'When needed', quantity: 6 }
+        { name: 'Paracetamol 500mg', timing: { morning: '8:00 AM', afternoon: '2:00 PM' }, duration: '3', dosage: '1 tablet', instructions: 'When needed', quantity: 6 },
+        { name: 'Ibuprofen 400mg', timing: { afternoon: '2:00 PM' }, duration: '3', dosage: '1 tablet', instructions: 'After food when needed', quantity: 3 }
       ]
     },
     stomach: {
-      keywords: ['stomach pain', 'belly pain', 'abdominal pain', 'stomach ache', 'gas', 'acidity'],
-      response: "For stomach pain, I recommend:\n\nMedicines:\n- Tab. Pantocid 40mg - 1 tablet on empty stomach\n- Tab. Digene 1 tablet - after meals\n\nAdvice:\n- Avoid spicy food\n- Drink warm water\n- Eat light meals\n- Don't eat fast\n\nGo to hospital if severe pain or vomiting!",
+      keywords: ['stomach pain', 'belly pain', 'abdominal pain', 'stomach ache', 'gas', 'acidity', 'indigestion', 'heartburn'],
+      response: "For stomach pain, I recommend:\n\nMedicines:\n- Tab. Pantocid 40mg - 1 tablet on empty stomach\n- Tab. Digene 1 tablet - after meals\n- Tab. Domstal 10mg - 1 tablet before food\n\nAdvice:\n- Avoid spicy food\n- Drink warm water\n- Eat light meals\n- Don't eat fast\n\nGo to hospital if severe pain or vomiting!",
       medicines: [
         { name: 'Pantocid 40mg', timing: { morning: '8:00 AM' }, duration: '7', dosage: '1 tablet', instructions: 'Empty stomach', quantity: 7 },
-        { name: 'Digene', timing: { afternoon: '2:00 PM', night: '8:00 PM' }, duration: '7', dosage: '1 tablet', instructions: 'After food', quantity: 14 }
+        { name: 'Digene', timing: { afternoon: '2:00 PM', night: '8:00 PM' }, duration: '7', dosage: '1 tablet', instructions: 'After food', quantity: 14 },
+        { name: 'Domstal 10mg', timing: { morning: '8:00 AM', night: '8:00 PM' }, duration: '5', dosage: '1 tablet', instructions: 'Before food', quantity: 10 }
       ]
     },
     bodyPain: {
-      keywords: ['body pain', 'body ache', 'muscle pain', 'joint pain', 'back pain'],
-      response: "For body pain, I recommend:\n\nMedicines:\n- Tab. Ibuprofen 400mg - 1 tablet after food when needed\n\nAdvice:\n- Rest properly\n- Apply warm compress on affected area\n- Take pain reliever after food\n- Gentle massage\n\nConsult a doctor if pain persists more than a week!",
+      keywords: ['body pain', 'body ache', 'muscle pain', 'joint pain', 'back pain', 'leg pain', 'arm pain'],
+      response: "For body pain, I recommend:\n\nMedicines:\n- Tab. Ibuprofen 400mg - 1 tablet after food when needed\n- Tab. Aceclofenac 100mg - 1 tablet twice daily\n- Gel. Volini - Apply on affected area\n\nAdvice:\n- Rest properly\n- Apply warm compress on affected area\n- Take pain reliever after food\n- Gentle massage\n\nConsult a doctor if pain persists more than a week!",
       medicines: [
-        { name: 'Ibuprofen 400mg', timing: { morning: '8:00 AM', night: '8:00 PM' }, duration: '5', dosage: '1 tablet', instructions: 'After food', quantity: 10 }
+        { name: 'Ibuprofen 400mg', timing: { morning: '8:00 AM', night: '8:00 PM' }, duration: '5', dosage: '1 tablet', instructions: 'After food', quantity: 10 },
+        { name: 'Aceclofenac 100mg', timing: { morning: '8:00 AM', night: '8:00 PM' }, duration: '5', dosage: '1 tablet', instructions: 'After food', quantity: 10 }
       ]
     },
     vomiting: {
-      keywords: ['vomit', 'throwing up', 'nausea', 'feeling sick'],
-      response: "For vomiting, I recommend:\n\nMedicines:\n- Tab. Ondansetron 4mg - 1 tablet when needed\n- ORS solution - 1 packet in 1 liter water\n\nAdvice:\n- Sip ORS solution slowly\n- Start with light food (rice, banana)\n- Avoid dairy initially\n\nGo to hospital if blood in vomit or severe dehydration!",
+      keywords: ['vomit', 'throwing up', 'nausea', 'feeling sick', 'throw up'],
+      response: "For vomiting, I recommend:\n\nMedicines:\n- Tab. Ondansetron 4mg - 1 tablet when needed\n- ORS solution - 1 packet in 1 liter water\n- Tab. Domstal 10mg - 1 tablet before food\n\nAdvice:\n- Sip ORS solution slowly\n- Start with light food (rice, banana)\n- Avoid dairy initially\n\nGo to hospital if blood in vomit or severe dehydration!",
       medicines: [
-        { name: 'Ondansetron 4mg', timing: { morning: '8:00 AM', afternoon: '2:00 PM' }, duration: '3', dosage: '1 tablet', instructions: 'When needed', quantity: 6 }
+        { name: 'Ondansetron 4mg', timing: { morning: '8:00 AM', afternoon: '2:00 PM' }, duration: '3', dosage: '1 tablet', instructions: 'When needed', quantity: 6 },
+        { name: 'ORS', timing: { morning: '8:00 AM', afternoon: '2:00 PM', evening: '6:00 PM' }, duration: '3', dosage: '1 packet', instructions: 'In 1 liter water', quantity: 6 }
       ]
     },
     diarrhea: {
-      keywords: ['diarrhea', 'loose motion', 'watery stool', 'upset stomach'],
-      response: "For diarrhea, I recommend:\n\nMedicines:\n- OFLOXACIN OR 200mg - 1 tablet twice daily\n- ORS solution - 1 packet in 1 liter water\n\nAdvice:\n- Drink plenty of fluids\n- Eat bland food (rice, banana, toast)\n- Avoid dairy\n\nConsult a doctor if diarrhea lasts more than 3 days!",
+      keywords: ['diarrhea', 'loose motion', 'watery stool', 'upset stomach', 'frequent stool'],
+      response: "For diarrhea, I recommend:\n\nMedicines:\n- Oflox 200mg - 1 tablet twice daily\n- ORS solution - 1 packet in 1 liter water\n- Tab. Loperamide 2mg - 1 tablet after each stool (max 8)\n\nAdvice:\n- Drink plenty of fluids\n- Eat bland food (rice, banana, toast)\n- Avoid dairy\n\nConsult a doctor if diarrhea lasts more than 3 days!",
       medicines: [
-        { name: 'ORS', timing: { morning: '8:00 AM', afternoon: '2:00 PM', evening: '6:00 PM' }, duration: '3', dosage: '1 packet', instructions: 'In 1 liter water', quantity: 3 }
+        { name: 'Oflox 200mg', timing: { morning: '8:00 AM', night: '8:00 PM' }, duration: '3', dosage: '1 tablet', instructions: 'After food', quantity: 6 },
+        { name: 'ORS', timing: { morning: '8:00 AM', afternoon: '2:00 PM', evening: '6:00 PM' }, duration: '3', dosage: '1 packet', instructions: 'In 1 liter water', quantity: 6 }
       ]
     },
     dizziness: {
-      keywords: ['dizzy', 'dizziness', 'lightheaded', 'vertigo'],
-      response: "For dizziness, I recommend:\n\nMedicines:\n- Tab. Stugeron 25mg - 1 tablet thrice daily\n\nAdvice:\n- Sit or lie down immediately\n- Drink water\n- Avoid sudden movements\n- Don't drive\n\nConsult a doctor if dizziness is frequent!",
+      keywords: ['dizzy', 'dizziness', 'lightheaded', 'vertigo', 'feeling faint'],
+      response: "For dizziness, I recommend:\n\nMedicines:\n- Tab. Stugeron 25mg - 1 tablet thrice daily\n- Tab. Betahistine 16mg - 1 tablet thrice daily\n\nAdvice:\n- Sit or lie down immediately\n- Drink water\n- Avoid sudden movements\n- Don't drive\n\nConsult a doctor if dizziness is frequent!",
       medicines: [
         { name: 'Stugeron 25mg', timing: { morning: '8:00 AM', afternoon: '2:00 PM', night: '8:00 PM' }, duration: '7', dosage: '1 tablet', instructions: 'After food', quantity: 21 }
+      ]
+    },
+    allergy: {
+      keywords: ['allergy', 'allergic', 'skin rash', 'itching', 'itchy', 'hives'],
+      response: "For allergy, I recommend:\n\nMedicines:\n- Tab. Cetrizine 10mg - 1 tablet at night\n- Tab. Fexofenadine 180mg - 1 tablet daily\n- Lotion. Calamine - Apply on rash\n\nAdvice:\n- Avoid known allergens\n- Wear loose cotton clothes\n- Don't scratch the affected area\n- Keep skin moisturized\n\nConsult a doctor if severe!",
+      medicines: [
+        { name: 'Cetrizine 10mg', timing: { night: '10:00 PM' }, duration: '7', dosage: '1 tablet', instructions: 'At night', quantity: 7 },
+        { name: 'Fexofenadine 180mg', timing: { morning: '8:00 AM' }, duration: '7', dosage: '1 tablet', instructions: 'With breakfast', quantity: 7 }
+      ]
+    },
+    diabetes: {
+      keywords: ['diabetes', 'sugar', 'blood sugar', 'high glucose', 'diabetic'],
+      response: "For diabetes management, I recommend:\n\nMedicines:\n- Tab. Metformin 500mg - 1 tablet twice daily\n- Tab. Glimepride 1mg - 1 tablet daily (as per doctor's advice)\n\nAdvice:\n- Check blood sugar regularly\n- Avoid sugar and sweets\n- Eat whole grains and vegetables\n- Exercise daily\n\nIMPORTANT: Consult a doctor for proper diabetes management!",
+      medicines: [
+        { name: 'Metformin 500mg', timing: { morning: '8:00 AM', night: '8:00 PM' }, duration: '30', dosage: '1 tablet', instructions: 'After food', quantity: 60 }
+      ]
+    },
+    bloodPressure: {
+      keywords: ['blood pressure', 'hypertension', 'high bp', 'bp high', 'heart pressure'],
+      response: "For blood pressure management, I recommend:\n\nMedicines:\n- Tab. Amlodipine 5mg - 1 tablet daily\n- Tab. Lisinopril 5mg - 1 tablet daily\n\nAdvice:\n- Reduce salt intake\n- Avoid fried foods\n- Exercise regularly\n- Monitor BP daily\n\nIMPORTANT: Consult a cardiologist for proper BP management!",
+      medicines: [
+        { name: 'Amlodipine 5mg', timing: { morning: '8:00 AM' }, duration: '30', dosage: '1 tablet', instructions: 'After food', quantity: 30 }
+      ]
+    },
+    eye: {
+      keywords: ['eye pain', 'eye problem', 'red eye', 'eye infection', 'vision', 'blur vision'],
+      response: "For eye problems, I recommend:\n\nMedicines:\n- Eye Drop. Refresh Tears - 2 drops 3 times daily\n- Eye Drop. Ciprofloxacin - 2 drops 4 times daily\n\nAdvice:\n- Don't rub your eyes\n- Use clean water to wash eyes\n- Avoid screen strain\n- Wear sunglasses outdoors\n\nConsult an eye specialist if persists!",
+      medicines: [
+        { name: 'Refresh Tears Eye Drop', timing: { morning: '8:00 AM', afternoon: '2:00 PM', night: '8:00 PM' }, duration: '7', dosage: '2 drops', instructions: 'In both eyes', quantity: 1 },
+        { name: 'Ciprofloxacin Eye Drop', timing: { morning: '8:00 AM', afternoon: '2:00 PM', night: '8:00 PM', evening: '6:00 PM' }, duration: '7', dosage: '2 drops', instructions: 'In affected eye', quantity: 1 }
+      ]
+    },
+    skin: {
+      keywords: ['skin problem', 'skin infection', 'pimples', 'acne', 'wound', 'cut'],
+      response: "For skin problems, I recommend:\n\nMedicines:\n- Cream. Clindamycin - Apply twice daily\n- Cream. Mupirocin - Apply on wound\n- Tab. Doxycycline 100mg - 1 tablet twice daily (for acne)\n\nAdvice:\n- Keep affected area clean\n- Don't scratch or pop pimples\n- Use mild soap\n- Avoid oily foods\n\nConsult a dermatologist if severe!",
+      medicines: [
+        { name: 'Clindamycin Cream', timing: { morning: '8:00 AM', night: '8:00 PM' }, duration: '14', dosage: 'Apply cream', instructions: 'On affected area', quantity: 1 }
       ]
     }
   };
@@ -244,7 +288,7 @@ const AIDoctor = ({ onEndConsultation }) => {
           messages: [
             {
               role: 'system',
-              content: 'You are Dr. AI Assistant, a helpful medical AI at Unity Health Hub. Provide clear, concise medical advice. Ask follow-up questions if needed. Be empathetic and professional. Keep responses under 150 words.'
+              content: 'You are Dr. AI Assistant, a helpful medical AI at Unity Health Hub specializing in healthcare and wellness. IMPORTANT: 1. ONLY provide health and medical-related advice 2. NEVER say "sorry" - provide constructive help instead 3. NEVER discuss relationships or non-medical topics 4. Always be encouraging about health matters 5. Provide practical, actionable medical advice 6. Ask follow-up symptoms questions if needed. Keep responses under 150 words.'
             },
             {
               role: 'user',
@@ -260,7 +304,7 @@ const AIDoctor = ({ onEndConsultation }) => {
       return data.choices[0].message.content;
     } catch (error) {
       console.error('Groq API Error:', error);
-      return "I'm having trouble connecting right now. Please try again or describe your symptoms in more detail.";
+      return getAIResponse(userMessage, doctorInfo.specialization);
     }
   };
 
@@ -436,6 +480,12 @@ Please consult a real doctor.
 
   const handleOkButton = () => {
     setShowOkButton(false);
+    // Navigate to Medicine Reminder section - close AI Doctor and open Medication Reminder
+    if (onNavigateToMedicines) {
+      onNavigateToMedicines();
+    }
+    // Also close current view and open medication reminder directly
+    onEndConsultation();
   };
 
   const handleEndCall = () => {

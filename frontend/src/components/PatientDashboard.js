@@ -262,12 +262,6 @@ const PatientDashboard = ({ patientId, onNavigateToMedicines }) => {
           >
             <FaHistory /> Consultations
           </button>
-          <button 
-            className={`tab-btn ${activeTab === 'medicines' ? 'active' : ''}`}
-            onClick={() => setActiveTab('medicines')}
-          >
-            <FaPills /> Medicine Reminder ({medicineReminders.length})
-          </button>
         </div>
       </div>
 

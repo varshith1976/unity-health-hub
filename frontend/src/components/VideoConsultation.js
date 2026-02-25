@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FaVideo, FaVideoSlash, FaPhoneSlash, FaStar, FaUser, FaClock, FaTimes, FaRobot, FaBrain, FaStethoscope, FaPaperPlane } from 'react-icons/fa';
 import { generateClinicalAnalysis } from '../utils/clinicalAnalysis';
+import { getAIResponse } from '../utils/aiResponses';
 import './VideoConsultation.css';
 
 const VideoConsultation = ({ appointment, onEndConsultation }) => {
@@ -63,94 +64,9 @@ const VideoConsultation = ({ appointment, onEndConsultation }) => {
     };
   }, [appointment]);
 
-  // Simple local AI responses
+  // Use the new comprehensive AI responses
   const getLocalAIResponse = (message) => {
-    const lowerMessage = message.toLowerCase();
-    const specialization = appointmentData.specialization || 'General Physician';
-    
-    const healthKeywords = ['health', 'medical', 'doctor', 'hospital', 'medicine', 'symptom', 'pain', 'fever', 'cough', 'cold', 'headache', 'stomach', 'heart', 'blood', 'pressure', 'diabetes', 'treatment', 'prescription', 'disease', 'illness', 'infection', 'virus', 'bacteria', 'sick', 'unwell', 'ache', 'breathing', 'chest', 'lung', 'liver', 'kidney', 'brain', 'nerve', 'bone', 'joint', 'muscle', 'skin', 'eye', 'ear', 'nose', 'throat', 'pregnancy', 'baby', 'child', 'mental', 'stress', 'anxiety', 'depression', 'sleep', 'nutrition', 'diet', 'exercise', 'weight', 'allergy', 'asthma', 'arthritis', 'nausea', 'vomiting', 'diarrhea', 'constipation', 'fatigue', 'weakness', 'dizziness', 'swelling', 'rash', 'itching', 'bleeding', 'fracture', 'sprain', 'vaccine'];
-    
-    const isHealthRelated = healthKeywords.some(keyword => lowerMessage.includes(keyword));
-    
-    if (!isHealthRelated) {
-      return `I'm specifically designed to help with health and medical concerns related to ${specialization}. Please ask me questions about your symptoms, medical conditions, or health-related topics.`;
-    }
-    
-    if (lowerMessage.includes('fever') || lowerMessage.includes('temperature') || lowerMessage.includes('hot')) {
-      return "I see you have fever. How high is your temperature? Have you taken any medication for it? How long have you had this fever?";
-    }
-    
-    if (lowerMessage.includes('headache') || lowerMessage.includes('migraine') || lowerMessage.includes('dizzy')) {
-      return "I'm sorry to hear about your headache. Where exactly does it hurt? Is it sharp or dull pain? How long have you been experiencing this?";
-    }
-    
-    if (lowerMessage.includes('cough') || lowerMessage.includes('cold') || lowerMessage.includes('flu')) {
-      return "It sounds like you might have a cold or flu. Do you have any other symptoms like runny nose, sore throat, or body aches?";
-    }
-    
-    if (lowerMessage.includes('stomach') || lowerMessage.includes('nausea') || lowerMessage.includes('vomit') || lowerMessage.includes('diarrhea')) {
-      return "I'm concerned about your stomach issue. How long have you been feeling this way? Have you eaten anything unusual recently?";
-    }
-    
-    if (lowerMessage.includes('chest') || lowerMessage.includes('heart') || lowerMessage.includes('palpitation')) {
-      return "Chest pain or heart-related symptoms should be taken seriously. How long have you been experiencing this? Is the pain sharp or dull? Does it radiate to your arm or jaw?";
-    }
-    
-    if (lowerMessage.includes('breath') || lowerMessage.includes('breathing') || lowerMessage.includes('lung')) {
-      return "I'm concerned about your breathing. Is it difficult to breathe at rest or only during activity? Do you have any history of asthma or respiratory issues?";
-    }
-    
-    if (lowerMessage.includes('skin') || lowerMessage.includes('rash') || lowerMessage.includes('itch')) {
-      return "Tell me more about your skin condition. Where is the rash located? Is it itchy or painful? How long have you noticed it?";
-    }
-    
-    if (lowerMessage.includes('joint') || lowerMessage.includes('bone') || lowerMessage.includes('fracture') || lowerMessage.includes('pain')) {
-      return "I'm sorry you're experiencing pain. Which area hurts the most? Is it sharp or aching? Did you have any recent injury?";
-    }
-    
-    if (lowerMessage.includes('eye') || lowerMessage.includes('vision') || lowerMessage.includes('blur')) {
-      return "Tell me about your eye concern. Is there redness, pain, or discharge? How is your vision - blurry or clear?";
-    }
-    
-    if (lowerMessage.includes('kidney') || lowerMessage.includes('urinate') || lowerMessage.includes('urination')) {
-      return "I understand this is a sensitive issue. Do you have any pain while urinating? Is there any blood in urine? How frequently do you urinate?";
-    }
-    
-    if (lowerMessage.includes('stress') || lowerMessage.includes('anxiety') || lowerMessage.includes('depression') || lowerMessage.includes('mental')) {
-      return "I understand mental health is important. How long have you been feeling this way? Has anything stressful happened recently?";
-    }
-    
-    if (lowerMessage.includes('pregnant') || lowerMessage.includes('pregnancy') || lowerMessage.includes('baby')) {
-      return "Congratulations on your pregnancy! How far along are you? What specific concerns would you like to discuss?";
-    }
-    
-    if (lowerMessage.includes('diabetes') || lowerMessage.includes('sugar') || lowerMessage.includes('blood pressure')) {
-      return "I see you're managing a chronic condition. What are your recent readings? Are you taking any medications regularly?";
-    }
-    
-    if (specialization === 'Cardiologist') {
-      return "As a heart specialist, I'm here to help with your cardiovascular concerns. Can you describe what symptoms you're experiencing?";
-    }
-    if (specialization === 'Neurologist') {
-      return "As a brain and nerve specialist, I can help with neurological concerns. What symptoms are you experiencing?";
-    }
-    if (specialization === 'Dermatologist') {
-      return "As a skin specialist, I'm here to help with your skin concerns. Can you describe what you're experiencing?";
-    }
-    if (specialization === 'Orthopedic Surgeon') {
-      return "As a bone and joint specialist, I can help with your musculoskeletal concerns. What pain or issue are you facing?";
-    }
-    if (specialization === 'Pediatrician') {
-      return "As a child healthcare specialist, I'm here to help with your child's health. What concerns do you have about your child?";
-    }
-    if (specialization === 'Ophthalmologist') {
-      return "As an eye specialist, I'm here to help with your vision concerns. What symptoms are you experiencing?";
-    }
-    if (specialization === 'Nephrologist') {
-      return "As a kidney specialist, I can help with kidney and urinary concerns. What symptoms are you experiencing?";
-    }
-    
-    return `I'm ${appointmentData.doctorName}, your ${specialization}. Please tell me about your health concerns. What symptoms are you experiencing, and how long have you had them?`;
+    return getAIResponse(message, appointmentData.specialization || 'General Physician');
   };
 
   // Call AI API
@@ -579,9 +495,24 @@ const VideoConsultation = ({ appointment, onEndConsultation }) => {
         <div className="video-container">
           <div className="remote-video">
             <video ref={remoteVideoRef} autoPlay playsInline />
-            <div className="video-placeholder" style={{ display: !remoteVideoRef.current?.srcObject ? 'flex' : 'none' }}>
-              <FaUser className="user-icon" style={{ fontSize: '5rem', opacity: 0.5 }} />
-              <p>Waiting for {appointmentData.doctorName}...</p>
+            <div className="video-placeholder">
+              <div className="waiting-content">
+                <div className="waiting-avatar">
+                  <FaUser className="user-icon" style={{ fontSize: '4rem', opacity: 0.7 }} />
+                </div>
+                <h3>Waiting for {appointmentData.doctorName}</h3>
+                <p className="waiting-message">Your doctor will join shortly...</p>
+                <p className="waiting-hint">You can start chatting below while waiting</p>
+                {!consultationStarted && (
+                  <button 
+                    className="btn btn-primary start-btn"
+                    onClick={startConsultation}
+                    style={{ marginTop: '15px' }}
+                  >
+                    Start AI Consultation
+                  </button>
+                )}
+              </div>
             </div>
           </div>
           <div className="local-video">
